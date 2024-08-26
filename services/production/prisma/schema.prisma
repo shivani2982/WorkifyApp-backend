@@ -1,0 +1,380 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:pass@host.docker.internal:5434/workifyDb?schema=public"
+}
+
+model attachment {
+  attachment_id   Int      @id @default(autoincrement())
+  message_id      Int?
+  attachment_link String?  @db.VarChar
+  message         message? @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+}
+
+model client {
+  client_id      Int           @id @default(autoincrement())
+  useraccount_id Int?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  location       String?       @db.VarChar
+  overview       String?       @db.VarChar
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  job            job[]
+}
+
+model contract {
+  contract_id     Int               @id @default(autoincrement())
+  proposal_id     Int?
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  contract_status String            @default("working")
+  proposal        proposal?         @relation(fields: [proposal_id], references: [proposal_id], onDelete: Cascade)
+  cancel_contract cancel_contract[]
+  notification    notification[]
+}
+
+// contract_status : working, complete request, complete, cancel request, order cancel, 
+// Add another tabe for contract status
+
+model cancel_contract {
+  id           Int           @id @default(autoincrement())
+  contract_id  Int?
+  user_id      Int?
+  message      String?       @db.VarChar
+  image        String?       @db.VarChar
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  contract     contract?     @relation(fields: [contract_id], references: [contract_id], onDelete: Cascade)
+  user_account user_account? @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model feature_job {
+  feature_id Int      @id @default(autoincrement())
+  status     Boolean? @db.Boolean
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  job        job[]
+}
+
+model freelancer {
+  freelancer_id  Int           @id @default(autoincrement())
+  useraccount_id Int?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  overview       String?       @db.VarChar
+  experience     String?       @db.VarChar
+  provider       String?       @db.VarChar
+  description    String?       @db.VarChar
+  links          String?       @db.VarChar
+  location       String?       @db.VarChar
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  has_skill      has_skill[]
+  job            job[]
+}
+
+model has_skill {
+  id             Int             @id @default(autoincrement())
+  freelancer_id  Int?
+  skill_id       Int?
+  freelancer     freelancer?     @relation(fields: [freelancer_id], references: [freelancer_id], onDelete: Cascade)
+  skill_category skill_category? @relation(fields: [skill_id], references: [skill_id], onDelete: Cascade)
+}
+
+model job {
+  job_id           Int              @id @default(autoincrement())
+  job_description  String?          @db.VarChar
+  duration         String?          @db.VarChar
+  image            String?          @db.VarChar
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  freelancer_id    Int?
+  client_id        Int?
+  skillcategory_id Int?
+  payment_id       Int?
+  feature_id       Int?
+  client           client?          @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  feature_job      feature_job?     @relation(fields: [feature_id], references: [feature_id], onDelete: Cascade)
+  freelancer       freelancer?      @relation(fields: [freelancer_id], references: [freelancer_id], onDelete: Cascade)
+  // Fix payment it is temporary 
+  payment          payment?         @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  skill_category   skill_category?  @relation(fields: [skillcategory_id], references: [skill_id], onDelete: Cascade)
+  job_attachment   job_attachment[]
+  chatroom         chatroom[]
+  other_category   other_category[]
+  proposal         proposal[]
+  task             task[]
+  saved_post       saved_post[]
+  review           review[]
+}
+
+model notification {
+  id           Int           @id @default(autoincrement())
+  title        String?       @db.VarChar
+  body         String?       @db.VarChar
+  created_at   DateTime      @default(now())
+  user_id      Int
+  proposal_id  Int?
+  contract_id  Int?
+  chatroom_id  Int?
+  user_account user_account? @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  chatroom     chatroom?     @relation(fields: [chatroom_id], references: [chatroom_id], onDelete: Cascade)
+  contract     contract?     @relation(fields: [contract_id], references: [contract_id], onDelete: Cascade)
+  proposal     proposal?     @relation(fields: [proposal_id], references: [proposal_id], onDelete: Cascade)
+}
+
+model saved_post {
+  id             Int           @id @default(autoincrement())
+  status         Boolean?
+  job_id         Int?
+  useraccount_id Int
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  job            job?          @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+}
+
+model chatroom {
+  chatroom_id   Int             @id @default(autoincrement())
+  job_id        Int?
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  job           job?            @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  message       message[]
+  user_chatroom user_chatroom[]
+  notification  notification[]
+}
+
+model user_chatroom {
+  chatroom_id    Int
+  useraccount_id Int
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  chatroom       chatroom?     @relation(fields: [chatroom_id], references: [chatroom_id], onDelete: Cascade)
+
+  @@id([useraccount_id, chatroom_id])
+}
+
+model message {
+  message_id     Int           @id @default(autoincrement())
+  useraccount_id Int?
+  chatroom_id    Int?
+  msg_text       String?       @db.VarChar
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  chatroom       chatroom?     @relation(fields: [chatroom_id], references: [chatroom_id], onDelete: Cascade)
+  attachment     attachment[]
+}
+
+model dispute {
+  dispute_id        Int                 @id @default(autoincrement())
+  useraccount_id    Int?
+  complain_title    String?             @db.VarChar
+  complain_msg      String?             @db.VarChar
+  complain_img      String?             @db.VarChar
+  status            String              @default("active")
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  user_account      user_account?       @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  dispute_complains dispute_complains[]
+}
+
+model dispute_complains {
+  id             Int           @id @default(autoincrement())
+  dispute_id     Int
+  useraccount_id Int?
+  complain_msg   String?       @db.VarChar
+  image          String?       @db.VarChar
+  dispute        dispute?      @relation(fields: [dispute_id], references: [dispute_id], onDelete: Cascade)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  user_account   user_account? @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+}
+
+model other_category {
+  id               Int             @id @default(autoincrement())
+  job_id           Int?
+  skillcategory_id Int?
+  job              job?            @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  skill_category   skill_category? @relation(fields: [skillcategory_id], references: [skill_id], onDelete: Cascade)
+}
+
+model payment {
+  payment_id     Int        @id @default(autoincrement())
+  type_name      String?    @db.VarChar
+  payment_amount Decimal?   @db.Decimal(10, 2)
+  job            job[]
+  proposal       proposal[]
+}
+
+model proposal {
+  proposal_id       Int                 @id @default(autoincrement())
+  useraccount_id    Int?
+  job_id            Int?
+  payment_id        Int?
+  description       String?             @db.VarChar
+  revisions         Int?
+  duration          Int?
+  proposal_status   String              @default("waiting")
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  contract          contract[]
+  user_account      user_account?       @relation(fields: [useraccount_id], references: [user_id], onDelete: Cascade)
+  job               job?                @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  payment           payment?            @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+  has_proposal_task has_proposal_task[]
+  notification      notification[]
+}
+
+model has_proposal_task {
+  id          Int       @id @default(autoincrement())
+  task_id     Int?
+  proposal_id Int?
+  proposal    proposal? @relation(fields: [proposal_id], references: [proposal_id], onDelete: Cascade)
+  task        task?     @relation(fields: [task_id], references: [task_id], onDelete: Cascade)
+}
+
+model review {
+  review_id              Int           @id @default(autoincrement())
+  send_review_userId     Int?
+  received_review_userId Int?
+  job_id                 Int?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+  rating                 Decimal?      @db.Decimal
+  review_comment         String?       @db.VarChar
+  sendReview_user        user_account? @relation("SendReviewUser", fields: [send_review_userId], references: [user_id], onDelete: Cascade)
+  receivedReview_user    user_account? @relation("ReceivedReviewUser", fields: [received_review_userId], references: [user_id], onDelete: Cascade)
+  job                    job?          @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+}
+
+model skill_category {
+  skill_id       Int              @id @default(autoincrement())
+  skill_name     String?          @db.VarChar
+  has_skill      has_skill[]
+  job            job[]
+  other_category other_category[]
+}
+
+model task {
+  task_id           Int                 @id @default(autoincrement())
+  task_description  String?             @db.VarChar
+  status            String              @default("none")
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  job_id            Int?
+  job               job?                @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+  has_proposal_task has_proposal_task[]
+}
+
+// status: none, progress, complete
+
+model user_account {
+  user_id             Int                 @id @default(autoincrement())
+  user_name           String              @unique(map: "user_name") @db.VarChar
+  email               String              @unique(map: "email") @db.VarChar
+  password            String              @db.VarChar
+  first_name          String?             @db.VarChar
+  last_name           String?             @db.VarChar
+  gender              String?             @db.VarChar
+  image               String?             @db.VarChar
+  created_at          DateTime            @default(now())
+  updated_at          DateTime            @updatedAt
+  role_id             Int
+  status              String              @default("unverified")
+  fcmToken            String              @default("")
+  role                role                @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  client              client[]
+  freelancer          freelancer[]
+  message             message[]
+  user_chatroom       user_chatroom[]
+  saved_post          saved_post[]
+  dispute             dispute[]
+  dispute_complains   dispute_complains[]
+  proposal            proposal[]
+  form                form[]
+  cancel_contract     cancel_contract[]
+  sendReview_user     review[]            @relation("SendReviewUser")
+  receivedReview_user review[]            @relation("ReceivedReviewUser")
+  notification        notification[]
+}
+
+// Status: unverified, verified, verification request
+
+model role {
+  id           Int            @id @default(autoincrement())
+  name         String         @db.VarChar
+  user_account user_account[]
+}
+
+model job_attachment {
+  attachment_id Int     @id @default(autoincrement())
+  job_id        Int?
+  image         String? @db.VarChar
+  documents     String? @db.VarChar
+  job           job?    @relation(fields: [job_id], references: [job_id], onDelete: Cascade)
+}
+
+model option {
+  id                   Int                   @id @default(autoincrement())
+  label                String                @db.VarChar
+  question_id          Int
+  question             question              @relation(fields: [question_id], references: [id], onDelete: Cascade)
+  has_response_options has_response_option[] @relation("response_to_option")
+}
+
+model has_response_option {
+  id          Int      @id @default(autoincrement())
+  option_id   Int
+  response_id Int
+  option      option   @relation("response_to_option", fields: [option_id], references: [id], onDelete: Cascade)
+  response    response @relation("response_to_option", fields: [response_id], references: [id], onDelete: Cascade)
+}
+
+model question {
+  id               Int           @id @default(autoincrement())
+  question         String?       @db.VarChar
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+  required         Boolean?      @db.Boolean
+  error            String?       @db.VarChar
+  placeholder      String?       @db.VarChar
+  question_type_id Int
+  question_type    question_type @relation("question_to_question_type", fields: [question_type_id], references: [id], onDelete: Cascade)
+  form_id          Int
+  form             form          @relation("question_to_form", fields: [form_id], references: [id], onDelete: Cascade)
+  options          option[]
+  responses        response[]    @relation("response_to_question")
+}
+
+model form {
+  id         Int          @id @default(autoincrement())
+  title      String?      @db.VarChar
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  user_id    Int
+  live       Boolean?     @db.Boolean
+  url        String?      @db.VarChar
+  user       user_account @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  questions  question[]   @relation("question_to_form")
+  responses  response[]   @relation("response_to_form")
+}
+
+model response {
+  id                   Int                   @id @default(autoincrement())
+  answer               String?               @db.VarChar
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
+  question_id          Int
+  form_id              Int
+  form                 form                  @relation("response_to_form", fields: [form_id], references: [id], onDelete: Cascade)
+  question             question              @relation("response_to_question", fields: [question_id], references: [id], onDelete: Cascade)
+  has_response_options has_response_option[] @relation("response_to_option")
+}
+
+model question_type {
+  id        Int        @id @default(autoincrement())
+  label     String?    @db.VarChar
+  questions question[] @relation("question_to_question_type")
+}
